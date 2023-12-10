@@ -10,13 +10,19 @@ compatibility_date = "2023-12-06"
 
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/runtime-apis/kv
-[[kv_namespaces]]
-binding = "STORE"
-id = "44e1ce25a671475297d86d08ca92dc77"
+kv_namespaces = [
+    { binding = "STORE", id = "44e1ce25a671475297d86d08ca92dc77" },
+    { binding = "ALL", id = "80300facb32e4489b09ba8f6d5e5dee1" },
+]
 
-[triggers]
-# Every day at 12AM
-crons = ["0 0 * * *"]
+[[d1_databases]]
+binding = "DB"                                       # i.e. available in your Worker on env.DB
+database_name = "omarmo"
+database_id = "7be023fe-2748-4a8f-8988-7a46394a488e"
+
+# [triggers]
+# # Every day at 12AM
+# crons = ["0 0 * * *"]
 
 # Bind an R2 Bucket. Use R2 to store arbitrarily large blobs of data, such as files.
 # Docs: https://developers.cloudflare.com/r2/api/workers/workers-api-usage/

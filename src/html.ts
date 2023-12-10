@@ -1,4 +1,4 @@
-import { Quote } from '../data';
+import { Quote } from '.';
 
 const formatDate = (date: Date): string => {
 	const day = date.getDate();
