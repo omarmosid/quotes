@@ -1,0 +1,32 @@
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="color-scheme" content="dark light" />
+		<title>Omars favourites quotes!</title>
+		<style>
+			body {
+				padding: 4em;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				flex-wrap: wrap;
+			}
+			h1 {
+				font-size: 2rem;
+				max-width: 20em;
+				width: 100%;
+			}
+			p.sub {
+				display: inline-block;
+				width: 100%;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>${randomQuote?.text}</h1>
+			<p class="sub">- ${randomQuote?.author} |</p>
+		</div>
+	</body>
+</html>

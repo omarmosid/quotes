@@ -9,11 +9,12 @@
  */
 
 import { quotes } from '../data';
-import { getRandomFromArray } from './random';
+import { getRandomQouteHTML, getTodaysQouteHTML } from './html';
+import { getRandomFromArray, getRandomIndexFromArray } from './random';
 
 export interface Env {
 	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-	// MY_KV_NAMESPACE: KVNamespace;
+	STORE: KVNamespace;
 	//
 	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
 	// MY_DURABLE_OBJECT: DurableObjectNamespace;
@@ -48,46 +49,41 @@ export default {
 					'content-type': 'application/json;charset=UTF-8',
 				},
 			});
+		} else if (route === '/today') {
+			const index = await env.STORE.get('today');
+			console.log('index', index);
+			if (!index) {
+				const index = getRandomIndexFromArray(quotes);
+				await env.STORE.put('today', index.toString());
+				const randomQuote = quotes[index];
+				const html = getTodaysQouteHTML(randomQuote);
+				return new Response(html, {
+					headers: {
+						'content-type': 'text/html;charset=UTF-8',
+					},
+				});
+			} else {
+				const randomQuote = quotes[parseInt(index)];
+				const html = getTodaysQouteHTML(randomQuote);
+				return new Response(html, {
+					headers: {
+						'content-type': 'text/html;charset=UTF-8',
+					},
+				});
+			}
 		} else {
 			const randomQuote = getRandomFromArray(quotes);
-			const html = `<html lang="en">
-			<head>
-				<meta charset="UTF-8" />
-				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-				<meta name="color-scheme" content="dark light">
-				<title>Omars favourites quotes!</title>
-				<style>
-					body {
-						padding: 4em;
-						display: flex;
-						justify-content: center;
-						align-items: center;
-						flex-wrap: wrap;
-					}
-					h1 {
-						font-size: 1.6em;
-						max-width: 20em;
-						width: 100%;
-					}
-					p.sub {
-						display: inline-block;
-						width: 100%;
-						color: rgba(255, 255, 255, 50%);
-					}
-				</style>
-			</head>
-			<body>
-				<div class="container">
-					<h1>${randomQuote?.text}</h1>
-					<p class="sub">- ${randomQuote?.author}</p>
-				</div>
-			</body>
-		</html>`;
+			const html = getRandomQouteHTML(randomQuote);
 			return new Response(html, {
 				headers: {
 					'content-type': 'text/html;charset=UTF-8',
 				},
 			});
 		}
+	},
+
+	async scheduled(event: ScheduledEvent, env: Env) {
+		const index = getRandomIndexFromArray(quotes)?.toString() || '';
+		env.STORE.put('today', index);
 	},
 };
