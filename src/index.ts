@@ -97,31 +97,45 @@ export const getRandomFromDB = async (env: Env) => {
 };
 
 export const getOneQuote = async (env: Env, id: string) => {
-	const { results } = await env.DB.prepare('SELECT * FROM quotes WHERE ?').bind(id).run();
+	const { results } = await env.DB.prepare('SELECT * FROM quotes WHERE id = ?').bind(id).run();
 
+	console.log('results', results);
 	return results[0] as Quote;
+};
+
+export const setTodaysQuote = async (env: Env) => {
+	const quote = await getRandomFromDB(env);
+	await env.STORE.put('today', JSON.stringify(quote?.id));
 };
 
 export const getTodaysFromDB = async (env: Env) => {
 	const todayId = await env.STORE.get('today');
+	console.log('todayId', todayId);
 
 	if (!todayId) {
+		console.log('set todayId');
 		const randomQuote = await getRandomFromDB(env);
 		await env.STORE.put('today', JSON.stringify(randomQuote?.id));
 		return randomQuote;
 	}
+	console.log('todayId', todayId);
 
 	return await getOneQuote(env, todayId);
+};
+
+export const emptyTable = async (env: Env) => {
+	await env.DB.prepare(`DELETE FROM quotes`).run();
 };
 
 // Sync google sheets with D1
 export const syncGoogleSheetsWithD1 = async (env: Env) => {
 	const quotes = await fetchQuotesFromSpreadsheet(env);
 
+	await emptyTable(env);
 	for await (const quote of quotes) {
 		const response = await env.DB.prepare(
 			`
-					INSERT INTO quotes (id, text, author, source, link, theme) VALUES (?, ?, ?, ?, ?, ?)	
+					INSERT OR REPLACE INTO quotes (id, text, author, source, link, theme) VALUES (?, ?, ?, ?, ?, ?)	
 				`
 		)
 			.bind(quote.id, quote.text, quote.author, quote.source, quote.link, quote.theme)
@@ -166,6 +180,7 @@ export default {
 			return new Response('Synced!');
 		} else if (route === '/today') {
 			const todaysQuote = await getTodaysFromDB(env);
+			console.log('todaysQuote', todaysQuote);
 			const html = getTodaysQouteHTML(todaysQuote);
 			return new Response(html, {
 				headers: {
@@ -183,22 +198,11 @@ export default {
 		}
 	},
 
-	// async scheduled(event: ScheduledEvent, env: Env) {
-	// 	if (event.cron === '0 0 * * *') {
-	// 		const spreadsheetId = env.GOOGLE_SHEET_DOC_ID;
-	// 		const apiKey = env.GOOGLE_API_KEY;
-	// 		const accountId = env.CF_ACCOUNT_ID;
-	// 		const cfApiKey = env.CF_API_KV_EDIT_TOKEN;
-	// 		const fetchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1?key=${apiKey}`;
-	// 		const quotes = await fetchQuotesFromSpreadsheet(fetchUrl);
-
-	// 		const bulkEditEndpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces/quotes-ALL/bulk`;
-	// 		const options = {
-	// 			method: 'PUT',
-	// 			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfApiKey}` },
-	// 			body: '[{"base64":false,"expiration":1578435000,"expiration_ttl":300,"key":"My-Key","metadata":{"someMetadataKey":"someMetadataValue"},"value":"Some string"}]',
-	// 		};
-	// 		fetch(bulkEditEndpoint, options);
-	// 	}
-	// },
+	async scheduled(event: ScheduledEvent, env: Env) {
+		if (event.cron === '0 0 * * *') {
+			await syncGoogleSheetsWithD1(env);
+			await setTodaysQuote(env);
+		}
+		console.log('cron job ran!');
+	},
 };
